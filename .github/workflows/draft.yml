@@ -95,7 +95,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.target }}
-          path: yazi-${{ matrix.target }}.zip
+          path: |
+            yazi-${{ matrix.target }}.zip
+            yazi-${{ matrix.target }}.msi
 
   build-musl:
     runs-on: ubuntu-latest
@@ -204,6 +206,7 @@ jobs:
             yazi-*.zip
             yazi-*.deb
             yazi-*.snap
+            yazi-*.msi
           generate_release_notes: true
 
   nightly:
@@ -240,6 +243,7 @@ jobs:
             yazi-*.zip
             yazi-*.deb
             yazi-*.snap
+            yazi-*.msi
           name: Nightly Build
           body: ${{ env.NIGHTLY_BODY }}
           target_commitish: ${{ github.sha }}

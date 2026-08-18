@@ -21,6 +21,7 @@ impl Dest {
 		copy_bins(&build.target, build.profile(), &to)?;
 
 		self.deb()?;
+		self.msi(build.profile())?;
 		self.stage()?;
 		self.archive()
 	}
@@ -42,6 +43,30 @@ impl Dest {
 				.args(["-o", &format!("yazi-{}.deb", self.target)]),
 		)
 		.context("failed to package the Debian archive")
+	}
+
+	fn msi(&self, profile: &str) -> Result<()> {
+		if !is_windows_target(&self.target) {
+			return Ok(());
+		} else if !matches!(self.target.split('-').next(), Some("aarch64" | "x86_64")) {
+			return Ok(());
+		}
+
+		// cargo-wix reads the workspace, whose `yazi-*` members would also match
+		// a staging directory left by an earlier run, so remove that first.
+		ok_or_not_found!(fs::remove_dir_all(workspace_root()?.join(format!("yazi-{}", self.target))));
+
+		run(Command::new(cargo()).args(["install", "cargo-wix"]))
+			.context("failed to install cargo-wix")?;
+
+		run(
+			Command::new(cargo())
+				.args(["wix", "-p", "yazi-packing", "--no-build", "--nocapture", "--profile", profile])
+				.arg("--target")
+				.arg(&self.target)
+				.args(["-o", &format!("yazi-{}.msi", self.target)]),
+		)
+		.context("failed to package the Windows installer")
 	}
 
 	fn stage(&self) -> Result<()> {

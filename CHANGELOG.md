@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/):
 - Update methods to dynamic Lua APIs ([#4389])
 - Respect user locale date format ([#4395])
 - New `patch` DDS event for reporting incremental changes to files ([#4365])
+- Real WiX `.msi` Windows installer alongside the existing portable zip, so winget can prefer a per-machine install over the portable/symlink one ([#])
 
 ### Changed
 

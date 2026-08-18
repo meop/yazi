@@ -1,0 +1,123 @@
+<?xml version='1.0' encoding='windows-1252'?>
+<!--
+  Copyright (C) 2017 Christopher R. Field.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+
+<!--
+  The "cargo wix" subcommand provides a variety of predefined variables available
+  for customization of this template. The values for each variable are set at
+  installer creation time. The following variables are available:
+
+  TargetTriple      = The rustc target triple name.
+  TargetEnv         = The rustc target environment. This is typically either
+                      "msvc" or "gnu" depending on the toolchain downloaded and
+                      installed.
+  TargetVendor      = The rustc target vendor. This is typically "pc", but Rust
+                      does support other vendors, like "uwp".
+  CargoTargetBinDir = The complete path to the directory containing the built
+                      binaries. The default would be "target\release" or, when
+                      cross-compiling for a target triple, "target\<TargetTriple>\release".
+                      `cargo xtask dist` (yazi-build) runs `cargo wix` for the
+                      yazi-packing package with the "release-windows" profile
+                      and the target triple, so this is
+                      "target\<TargetTriple>\release-windows".
+  CargoTargetDir    = The path to the directory for the build artifacts, i.e.
+                      "target".
+  CargoProfile      = Either "debug" or `release` depending on the build
+                      profile. The default is "release".
+  Version           = The version for the installer. The default is the
+                      "Major.Minor.Fix" semantic versioning number of the Rust
+                      package selected with `cargo wix -p <package>`.
+
+  Unlike a single-binary crate, this workspace produces two binaries from two
+  different packages (yazi-fm -> yazi.exe, yazi-cli -> ya.exe) that both land
+  in the same CargoTargetBinDir when built together (the default workspace
+  members). Both are referenced explicitly below rather than relying on
+  cargo-wix's single-binary auto-detection.
+-->
+
+<!--
+  Please do not remove these pre-processor If-Else blocks. These are used with
+  the `cargo wix` subcommand to automatically determine the installation
+  destination for 32-bit versus 64-bit installers. Removal of these lines will
+  cause installation errors.
+-->
+<?if $(sys.BUILDARCH) = x64 or $(sys.BUILDARCH) = arm64?>
+<?define PlatformProgramFilesFolder = "ProgramFiles64Folder"?>
+<?else ?>
+<?define PlatformProgramFilesFolder = "ProgramFilesFolder"?>
+<?endif ?>
+
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+
+  <Product Id='*' Name='yazi' UpgradeCode='AD629AF9-EC73-4CAA-95FF-D4E9A4EF7562' Manufacturer='Yazi Contributors' Language='1033' Codepage='1252' Version='$(var.Version)'>
+
+    <Package Id='*' Keywords='Installer' Description='Blazing fast terminal file manager written in Rust, based on async I/O' Manufacturer='Yazi Contributors' InstallerVersion='450' Languages='1033' Compressed='yes' InstallScope='perMachine' SummaryCodepage='1252' />
+
+    <MajorUpgrade Schedule='afterInstallInitialize' DowngradeErrorMessage='A newer version of [ProductName] is already installed. Setup will now exit.' />
+
+    <Media Id='1' Cabinet='media1.cab' EmbedCab='yes' DiskPrompt='CD-ROM #1' />
+    <Property Id='DiskPrompt' Value='yazi Installation' />
+
+    <Directory Id='TARGETDIR' Name='SourceDir'>
+      <Directory Id='$(var.PlatformProgramFilesFolder)' Name='PFiles'>
+        <Directory Id='APPLICATIONFOLDER' Name='yazi'>
+
+          <Component Id='License' Guid='*'>
+            <File Id='LicenseFile' Name='LICENSE' DiskId='1' Source='LICENSE' KeyPath='yes' />
+          </Component>
+
+          <Directory Id='Bin' Name='bin'>
+            <Component Id='Path' Guid='7A6B0F44-9C2C-4C1B-8C63-2C9B3C7E9A2B' KeyPath='yes'>
+              <Environment Id='PATH' Name='PATH' Value='[Bin]' Permanent='no' Part='last' Action='set' System='yes' />
+            </Component>
+            <Component Id='binary0' Guid='*'>
+              <File Id='exe0' Name='yazi.exe' DiskId='1' Source='$(var.CargoTargetBinDir)\yazi.exe' KeyPath='yes' />
+            </Component>
+            <Component Id='binary1' Guid='*'>
+              <File Id='exe1' Name='ya.exe' DiskId='1' Source='$(var.CargoTargetBinDir)\ya.exe' KeyPath='yes' />
+            </Component>
+          </Directory>
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <Feature Id='Binaries' Title='Application' Description='Installs the yazi and ya binaries and the license.' Level='1' ConfigurableDirectory='APPLICATIONFOLDER' AllowAdvertise='no' Display='expand' Absent='disallow'>
+
+      <ComponentRef Id='License' />
+
+      <ComponentRef Id='binary0' />
+      <ComponentRef Id='binary1' />
+
+      <Feature Id='Environment' Title='PATH Environment Variable' Description='Add the install location of the [ProductName] executables to the PATH system environment variable. This allows the yazi and ya executables to be called from any location.' Level='1' Absent='allow'>
+        <ComponentRef Id='Path' />
+      </Feature>
+    </Feature>
+
+    <SetProperty Id='ARPINSTALLLOCATION' Value='[APPLICATIONFOLDER]' After='CostFinalize' />
+
+    <Property Id='ARPHELPLINK' Value='https://yazi-rs.github.io' />
+
+    <UI>
+      <UIRef Id='WixUI_FeatureTree' />
+
+      <Publish Dialog='WelcomeDlg' Control='Next' Event='NewDialog' Value='CustomizeDlg' Order='99'>1</Publish>
+      <Publish Dialog='CustomizeDlg' Control='Back' Event='NewDialog' Value='WelcomeDlg' Order='99'>1</Publish>
+
+    </UI>
+
+  </Product>
+
+</Wix>
